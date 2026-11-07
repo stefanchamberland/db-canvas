@@ -1,0 +1,38 @@
+# Local media, saved projects, and rendered exports
+/test media/
+/workspace/
+*.dbcanvas
+*.dbcanvas.media/
+*.zip
+
+# Python environments and generated files
+/.venv/
+/venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+/build/
+/dist/
+
+# Machine-specific settings and credentials
+.env
+.env.*
+!.env.example
+/.aws/
+/.codex/
+.idea/
+.vscode/
+*.log
+
+# macOS and Windows metadata
+.DS_Store
+._*
+.Spotlight-V100/
+.Trashes/
+Thumbs.db
+Desktop.ini

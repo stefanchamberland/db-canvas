@@ -1,0 +1,53 @@
+#!/bin/bash
+set -e
+launcher_bundle_dir="$(cd "$(dirname "$0")/../../.." && pwd)"
+/usr/bin/osascript - "$launcher_bundle_dir" <<'APPLESCRIPT'
+on run argv
+    set installFolder to item 1 of argv
+    set launchPath to installFolder & "/Launch.command"
+    set alternatePath to installFolder & "/db-canvas/Launch.command"
+    set savedFolder to (POSIX path of (path to application support from user domain)) & "_dB Canvas"
+    set savedFile to savedFolder & "/launcher-location.txt"
+    set foundLauncher to false
+    try
+        do shell script "/usr/bin/test -f " & quoted form of launchPath
+        set foundLauncher to true
+    end try
+    if not foundLauncher then
+        try
+            do shell script "/usr/bin/test -f " & quoted form of alternatePath
+            set launchPath to alternatePath
+            set foundLauncher to true
+        end try
+    end if
+    if not foundLauncher then
+        try
+            set launchPath to do shell script "/bin/cat " & quoted form of savedFile
+            do shell script "/usr/bin/test -f " & quoted form of launchPath
+            set foundLauncher to true
+        end try
+    end if
+    if not foundLauncher then
+        try
+            set selectedLauncher to choose file with prompt "Select Launch.command inside your db-canvas folder. You only need to do this once."
+            set launchPath to POSIX path of selectedLauncher
+            if launchPath does not end with "/Launch.command" then
+                display alert "Choose Launch.command" message "Select the Launch.command file included with _dB Canvas." as warning
+                return
+            end if
+        on error number -128
+            return
+        end try
+    end if
+    try
+        do shell script "/bin/mkdir -p " & quoted form of savedFolder
+        do shell script "/usr/bin/printf '%s' " & quoted form of launchPath & " > " & quoted form of savedFile
+        tell application "Terminal"
+            activate
+            do script "/bin/bash " & quoted form of launchPath
+        end tell
+    on error errorMessage
+        display alert "_dB Canvas could not launch" message errorMessage as warning
+    end try
+end run
+APPLESCRIPT

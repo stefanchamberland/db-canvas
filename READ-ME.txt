@@ -1,0 +1,12 @@
+_dB Canvas — Mac shortcut
+
+1. Extract this ZIP.
+2. Put "_dB Canvas.app" inside your existing db-canvas folder, alongside Launch.command.
+3. Double-click the app icon. It opens Terminal, runs the existing launcher, and opens the editor in your browser. Keep that Terminal window running while using the editor.
+4. Drag the app icon to the Dock for one-click access. For a Desktop shortcut, use Finder's Make Alias command and move the alias to the Desktop.
+
+You can also keep the app elsewhere. On first launch it will ask you to select the existing Launch.command file and remember its location.
+
+This is a launcher for the web app you already installed. Python and FFmpeg requirements are unchanged. It uses macOS's built-in shell and AppleScript, so the launcher itself supports both Apple silicon and Intel Macs.
+
+This app bundle is unsigned and has not been executed on macOS in this environment. The shell syntax, bundle metadata, icon, and ZIP permissions were checked. macOS may ask for permission to control Terminal or require approval to open downloaded software.
