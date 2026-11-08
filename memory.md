@@ -127,3 +127,14 @@ local installed files, preserving existing workspace data and projects.
 - `.gitignore` excludes test media, workspace outputs/projects, ZIPs, Python environments/caches, local credentials/settings, and OS metadata. Existing media and exports remain on disk.
 - App code, tests, documentation, project memory, icons, and portable Mac launcher bundle are tracked.
 - Validation notes updated with the latest Mac test results.
+
+
+## Presets and native typography — 2026-11-07
+- Added Saved presets UI with disk-backed save/list/load APIs. Presets copy media to `workspace/presets/<name>` and survive restarts/source-file removal. Duplicate names are protected; edits affect the working project, not the preset.
+- Saved approved layout as `workspace/presets/lut-bakery-demo/project.dbcanvas` with 15 layers. Original raster labels replaced by editable native text using Gill Sans, 25px, tracking 3, warm off-white at 225/255 opacity, smaller numbered steps/dividers, no text backgrounds. Layout/media/logos/PIP retained.
+- Added native text family, tracking, opacity, background, step formatting, and frame naming. Browser uses shared server text renderer for export parity. System fonts remain system dependencies; families/settings are saved, font files are not redistributed.
+- Added selected-media replacement (optionally all matching uses), Fill/Fit slide actions, and apply selected logo as watermark on all slides.
+- Eleven Python tests and extended Node UI checks passed, covering persistent presets with original source removed, duplicate/path rejection, styled previews, typography undo/redo, fit/fill, and watermark reuse.
+- Native Chrome check successfully loaded lut-bakery-demo and verified editable Gill Sans/step/spacing/opacity controls. Server started at http://127.0.0.1:8765 for this session (keep running to use the open editor).
+- User’s approved old deliverables remain under `workspace/test-runs/20261107-171536`.
+- Fresh five-slide export from the native-text preset passed. Approved artwork matches exactly outside label regions; decoded MP4 typography matched expected rendering within compression tolerance, and video background was verified black.

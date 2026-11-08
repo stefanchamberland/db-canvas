@@ -36,3 +36,15 @@ assert.equal(evaluate('p.layers[0].x'),x+100);assert.equal(evaluate('p.layers[0]
 evaluate("assets=[{id:'a',kind:'image',name:'photo',width:300,height:200}]");
 evaluate("acceptProject({project:p,assets:[{id:'a',kind:'image',name:'photo',width:300,height:200}]})");assert.equal(evaluate('assets.length'),1);
 console.log('UI logic checks passed: DOM bindings, text, frame properties, undo/redo, duplicate/delete, sparse scene timing, drag, and media deduplication.');
+// Typography changes survive undo; canvas fitting and repeated watermark application preserve a reusable layout.
+evaluate('selected=p.layers[0].id;inspect()');
+elements['font-family'].value='Gill Sans';elements['text-style'].value='step';elements.step.value='01';elements.tracking.value='3';elements['text-opacity'].value='.88';elements['text-background'].checked=false;elements.text.value='ORIGINAL';elements['apply-frame'].click();
+assert.equal(evaluate('selectedLayer().font_family'),'Gill Sans');assert.equal(evaluate('selectedLayer().text_background'),false);
+evaluate('undo()');assert.equal(evaluate('p.layers[0].font_family'),'Helvetica');evaluate('redo()');assert.equal(evaluate('p.layers[0].tracking'),3);
+evaluate("addAsset('a');sizeToSlide(false)");assert.equal(evaluate('selectedLayer().w'),1080);assert.equal(evaluate('selectedLayer().h'),720);
+evaluate('sizeToSlide(true)');assert.equal(evaluate('selectedLayer().fit'),'cover');assert.equal(evaluate('selectedLayer().h'),1350);
+evaluate('selectedLayer().w=78;selectedLayer().h=78;selectedLayer().x=962;selectedLayer().y=1232');
+elements['watermark-all'].click();elements['watermark-all'].click();
+assert.equal(evaluate("p.layers.filter(l=>l.name==='Watermark').length"),4);
+assert.equal(evaluate("p.layers.filter(l=>l.name==='Watermark').every(l=>l.y===1232&&l.w===78)"),true);
+console.log('Preset editing checks passed: editable typography, undo/redo, fit/fill, and watermark reuse.');

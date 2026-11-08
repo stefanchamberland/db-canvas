@@ -61,5 +61,30 @@ class LocalWebTests(unittest.TestCase):
         with zipfile.ZipFile(buf,'w') as z:z.writestr('project.dbcanvas',json.dumps(p));z.writestr('../outside.png','bad')
         with self.assertRaises(urllib.error.HTTPError) as err:self.request('/api/open',buf.getvalue(),raw=True)
         self.assertEqual(err.exception.code,400)
+    def test_preset_keeps_branding_media_and_editable_typography(self):
+        buf=io.BytesIO();Image.new('RGBA',(40,40),(255,255,255,120)).save(buf,'PNG')
+        imported=json.loads(self.request('/api/upload?name=logo.png',buf.getvalue(),raw=True))
+        p=server.Project(width=160,height=160,count=1,layers=[
+            server.Layer(kind='text',text='ORIGINAL',step='01',font_family='Gill Sans',font_size=12,
+                         tracking=2,text_opacity=.8,text_background=False,text_style='step',w=150,h=40),
+            server.Layer(kind='image',path=server.ASSETS[imported['id']]['path'],name='Watermark',w=40,h=40,border=0)])
+        encoded=server.encode_project(p)['project']
+        result=self.request('/api/presets/save',{'name':'brand-demo','project':encoded})
+        self.assertEqual(result['name'],'brand-demo')
+        # Persistence is on disk, not dependent on the in-memory asset registry.
+        original=Path(server.ASSETS[imported['id']]['path']);original.unlink();server.ASSETS.clear()
+        reopened=self.request('/api/presets/load',{'name':'brand-demo'})
+        text=reopened['project']['layers'][0]
+        self.assertEqual(text['font_family'],'Gill Sans');self.assertEqual(text['tracking'],2)
+        self.assertFalse(text['text_background']);self.assertEqual(text['step'],'01')
+        self.assertTrue(Path(server.ASSETS[reopened['assets'][0]['id']]['path']).exists())
+        self.assertIn('brand-demo',self.request('/api/presets')['presets'])
+        layer={k:v for k,v in text.items() if k!='asset'}
+        preview=self.request('/api/text-preview',{'layer':layer})
+        self.assertTrue(preview['url'].startswith('data:image/png;base64,'))
+        for name in ['../outside','brand-demo']:
+            with self.assertRaises(urllib.error.HTTPError) as err:
+                self.request('/api/presets/save',{'name':name,'project':reopened['project']})
+            self.assertEqual(err.exception.code,400)
 
 if __name__=='__main__':unittest.main()

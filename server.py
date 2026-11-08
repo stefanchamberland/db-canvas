@@ -1,16 +1,32 @@
 """Loopback-only server for _dB Canvas's portable browser interface."""
 from __future__ import annotations
-import io,json,mimetypes,os,secrets,shutil,sys,threading,time,uuid,webbrowser,zipfile
+import base64,io,json,mimetypes,os,re,secrets,shutil,sys,threading,time,uuid,webbrowser,zipfile
 from pathlib import Path
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 from urllib.parse import urlparse,parse_qs,unquote
-from engine import Project,Layer,probe,arrange,export_project,source_image
+from engine import Project,Layer,probe,arrange,export_project,source_image,text_tile
 
 BASE=Path(__file__).resolve().parent
 DATA=Path(os.environ.get('DB_CANVAS_DATA',str(BASE/'workspace'))).resolve()
 DATA.mkdir(parents=True,exist_ok=True);MEDIA=DATA/'media';MEDIA.mkdir(exist_ok=True)
 TOKEN=secrets.token_urlsafe(32);JOBS={};ASSETS={};LOCK=threading.Lock()
 MAX_UPLOAD=2*1024**3
+
+def preset_folder(name):
+    if not isinstance(name,str) or not re.fullmatch(r'[a-z0-9][a-z0-9_-]{0,79}',name):
+        raise ValueError('Use a preset name with lowercase letters, numbers, hyphens, or underscores (up to 80 characters).')
+    return DATA/'presets'/name
+
+def save_preset(name,p):
+    p.validate();folder=preset_folder(name)
+    with LOCK:
+        if folder.exists():raise ValueError('That preset already exists. Choose a new name.')
+        folder.parent.mkdir(parents=True,exist_ok=True)
+        import tempfile
+        with tempfile.TemporaryDirectory(dir=folder.parent,prefix='.saving-') as temp:
+            staging=Path(temp);p.save(staging/'project.dbcanvas')
+            staging.rename(folder)
+    return name
 
 def asset(path):
     path=Path(path).resolve()
@@ -84,6 +100,9 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_response(200);self.send_header('Content-Type','text/html; charset=utf-8');self.send_header('Content-Length',str(len(data)));self.end_headers();self.wfile.write(data);return
             if not self.authorized(q):self.json({'error':'Unauthorized'},403);return
             if u.path=='/api/info':self.json({'ffmpeg':bool(shutil.which('ffmpeg')),'ffprobe':bool(shutil.which('ffprobe')),'workspace':str(DATA)});return
+            if u.path=='/api/presets':
+                folder=DATA/'presets'
+                self.json({'presets':sorted(f.name for f in folder.iterdir() if (f/'project.dbcanvas').is_file() and not f.name.startswith('.')) if folder.exists() else []});return
             if u.path.startswith('/poster/'):
                 key=u.path.split('/')[-1]
                 if key not in ASSETS:raise ValueError('Unknown media.')
@@ -143,6 +162,19 @@ class Handler(BaseHTTPRequestHandler):
                     if project.get('music'):project['music']=str(folder/project['music'])
                 p=Project.from_dict(project);p.validate();self.json(encode_project(p));return
             data=json.loads(self.body())
+            if u.path=='/api/text-preview':
+                # Typography uses the same renderer in the editor and exported files.
+                l=Layer(**data['layer'])
+                if l.kind!='text' or not 2<=l.w<=3840 or not 2<=l.h<=3840:raise ValueError('Text preview dimensions must be 2–3840.')
+                Project(layers=[l]).validate()
+                buf=io.BytesIO();text_tile(l).save(buf,format='PNG')
+                self.json({'url':'data:image/png;base64,'+base64.b64encode(buf.getvalue()).decode()});return
+            if u.path=='/api/presets/save':
+                name=save_preset(data.get('name'),decode_project(data['project']))
+                self.json({'name':name});return
+            if u.path=='/api/presets/load':
+                p=Project.load(preset_folder(data.get('name'))/'project.dbcanvas')
+                self.json(encode_project(p));return
             if u.path=='/api/arrange':
                 p=decode_project(data['project']);paths=[ASSETS[i]['path'] for i in data['ids']]
                 arrange(p,paths,data.get('style','Seamless'));self.json(encode_project(p));return

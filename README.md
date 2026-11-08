@@ -30,6 +30,18 @@ To use a chosen port without opening a browser: `python server.py --no-browser -
 - **Save project** downloads a ZIP containing the layout and original assets. **Open project** reopens that ZIP. Unsaved edits are in browser memory and do not survive closing/reloading; save before leaving.
 - **Export** renders in the background, downloads a ZIP, and also keeps the files in this folder's `workspace/exports` directory. Export does not overwrite an earlier export.
 
+## Reusable presets and branding
+
+Use **Saved presets → Use preset** to start from a saved design. Enter a lowercase name such as `lut-bakery-demo` and click **Save new preset** to store the current canvas, media, logos, text styling, and scene durations. Presets persist under `workspace/presets`, with their own copies of the assets. Loading one creates an editable project; editing it does not change the saved preset. Save a new preset name for a variation. Existing names are protected from accidental overwriting.
+
+Select a frame and choose **Replace selected media…** to swap in a new photo or video while keeping its position, dimensions, fit, crop focus, and border. Enable **Replace all uses of this media** to update repeated artwork such as a logo. New videos start at zero and use their full source duration; the scene duration stays editable in the timeline. **Fill slide** covers the slide with a proportional crop; **Fit slide** shows the complete media at its original aspect ratio. Set the canvas background to black for landscape clips.
+
+Import a transparent logo, size and position it on one slide, and choose **Use as watermark on all slides**. The app repeats its size and relative position. Reapplying updates the matching watermark set without duplicating it.
+
+Text is editable in the inspector: choose a font, size, color, letter spacing, opacity, and whether to show a light background. **Minimal step label** adds a smaller step number and fine divider; edit the number and title separately. These labels are rendered by the same typography engine in the browser and export, including video overlays. No external label-image generation is needed. Font settings are saved; fonts use installed system files (Gill Sans and Baskerville on macOS, with a Helvetica/Arial/DejaVu fallback on other systems). Font files are not redistributed.
+
+Presets and their media are local and excluded from Git. To back up or move a design, load its preset and use **Save project** for a portable ZIP. Keep the `workspace/presets` folder when cleaning other working files.
+
 ## Formats and outputs
 
 | Project | Output |

@@ -61,6 +61,13 @@ class Layer:
     text: str=''
     font_size: int=30
     color: str='#333329'
+    name: str=''
+    font_family: str='Helvetica'
+    tracking: float=0
+    text_opacity: float=1
+    text_background: bool=True
+    text_style: str='plain'
+    step: str=''
     id: str=field(default_factory=lambda:uuid.uuid4().hex)
 
 @dataclass
@@ -132,12 +139,42 @@ class Project:
             if l.fit not in ('contain','cover'):raise ValueError('Unknown frame fit.')
             if l.kind!='text' and not Path(l.path).is_file():raise ValueError('Missing media: '+l.path)
             if l.kind=='video' and l.end<=l.start:raise ValueError('Video out must be after video in.')
+            if l.font_family not in FONT_PATHS:raise ValueError('Unknown font family.')
+            if not math.isfinite(l.tracking) or not 0<=l.tracking<=40:raise ValueError('Letter spacing must be 0–40.')
+            if not math.isfinite(l.text_opacity) or not 0<=l.text_opacity<=1:raise ValueError('Text opacity must be 0–1.')
+            if not 1<=l.font_size<=500 or l.text_style not in ('plain','step'):raise ValueError('Invalid text style or size.')
         if self.music and not Path(self.music).is_file():raise ValueError('Missing soundtrack: '+self.music)
 
-def font(size):
-    for f in ['/System/Library/Fonts/Helvetica.ttc','/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf','C:/Windows/Fonts/arial.ttf']:
+FONT_PATHS={
+    'Helvetica':['/System/Library/Fonts/Helvetica.ttc','/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf','C:/Windows/Fonts/arial.ttf'],
+    'Gill Sans':['/System/Library/Fonts/Supplemental/GillSans.ttc'],
+    'Baskerville':['/System/Library/Fonts/Supplemental/Baskerville.ttc'],
+    'Georgia':['/System/Library/Fonts/Supplemental/Georgia.ttf','C:/Windows/Fonts/georgia.ttf'],
+}
+
+def font(size,family='Helvetica'):
+    for f in FONT_PATHS.get(family,[])+FONT_PATHS['Helvetica']:
         if Path(f).exists():return ImageFont.truetype(f,max(1,int(size)))
     return ImageFont.load_default()
+
+def text_tile(l,scale=1):
+    """Shared typography renderer for browser previews, JPEGs, and video overlays."""
+    from PIL import ImageColor
+    im=Image.new('RGBA',(max(1,round(l.w*scale)),max(1,round(l.h*scale))), '#fffdf8' if l.text_background else (0,0,0,0))
+    d=ImageDraw.Draw(im);rgb=ImageColor.getrgb(l.color)
+    def tracked(x,y,text,size,spacing,opacity=1):
+        f=font(size*scale,l.font_family)
+        for c in text:
+            d.text((x*scale,y*scale),c,font=f,fill=(*rgb,round(255*l.text_opacity*opacity)),anchor='lt')
+            x+=d.textlength(c,font=f)/scale+spacing
+    if l.text_style=='step':
+        # Relative to font size so the same treatment works at any label scale.
+        unit=l.font_size/25
+        tracked(0,16*unit,l.step,21*unit,2*unit,.756)
+        d.line((47*unit*scale,15*unit*scale,47*unit*scale,36*unit*scale),fill=(*rgb,round(255*l.text_opacity*.4)),width=max(1,round(scale*unit)))
+        tracked(66*unit,14*unit,l.text,l.font_size,l.tracking)
+    else:tracked(12,8,l.text,l.font_size,l.tracking)
+    return im
 
 def source_image(layer,time=0,max_width=2048):
     if layer.kind=='image':
@@ -166,8 +203,9 @@ def render(project,index=0,time=0,scale=1,cache=None,transparent=False):
         lw,lh=max(1,round(l.w*scale)),max(1,round(l.h*scale));border=round(l.border*scale)
         if border:d.rectangle((x-border,y-border,x+lw+border-1,y+lh+border-1),fill='#fffdf8')
         if l.kind=='text':
-            d.rectangle((x,y,x+lw-1,y+lh-1),fill='#fffdf8')
-            d.text((x+12*scale,y+8*scale),l.text,font=font(l.font_size*scale),fill=l.color)
+            tile=text_tile(l,scale)
+            if transparent:canvas.alpha_composite(tile,(x,y))
+            else:canvas.paste(tile,(x,y),tile.getchannel('A'))
             continue
         key=(l.path,l.start) if l.kind=='video' else l.path
         if cache is not None and key in cache: im=cache[key]
